@@ -1,0 +1,33 @@
+[project]
+name = "pinrag-cli"
+version = "0.1.0"
+description = "Interactive CLI for PinRAG"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pinrag>=0.9.26",
+    "prompt-toolkit>=3.0",
+    "rich>=13.0",
+]
+
+[project.scripts]
+pinrag-cli = "pinrag_cli.main:main"
+
+[build-system]
+requires = ["setuptools>=82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = ["pytest>=9.0.3"]
+
+[tool.uv.sources]
+pinrag = { path = "../pinrag", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
