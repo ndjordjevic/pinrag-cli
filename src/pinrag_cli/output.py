@@ -414,11 +414,15 @@ def render_help() -> None:
 - `/ask <ref|title> -- <question>` — RAG query scoped to one document (same ref/title/stem rules as `/remove`)
 - `/switch` — list Chroma collections; `/switch NAME` — use that collection
 - `/history` — show conversation turns for this session (JSON-backed)
+- `/clear` — clear in-session conversational memory (rolling Q/A used for follow-ups)
 - `/status` — show version, persist dir, collection, LLM
 - `/help` — this help
 - `/exit` — quit (same as Ctrl+D)
 
 **Else:** plain text line = RAG query over the index.
+
+**Session memory:** follow-up questions reuse a short rolling Q/A window. Set
+``PINRAG_CLI_MEMORY=0`` to disable. ``PINRAG_CLI_MEMORY_TURNS`` caps prior turns (default 5).
 """
     console.print(Markdown(text.strip()))
 

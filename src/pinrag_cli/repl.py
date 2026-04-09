@@ -15,6 +15,7 @@ from pinrag_cli import output
 from pinrag_cli.backend import BackendClient
 from pinrag_cli.commands import CommandDispatcher
 from pinrag_cli.history import ConversationStore
+from pinrag_cli.memory import load_conversation_memory_from_env
 
 if TYPE_CHECKING:
     from pinrag_cli.mcp_backend import MCPBackendClient
@@ -35,6 +36,7 @@ class REPLApp:
         self.mcp = mcp
         self.commands = CommandDispatcher(self)
         self.history = ConversationStore()
+        self.memory = load_conversation_memory_from_env()
         self.session_id = self.history.new_session()
         history_path = Path.home() / ".pinrag_cli_history"
         self.session = PromptSession(history=FileHistory(str(history_path)))
@@ -79,6 +81,8 @@ class REPLApp:
 
     async def _handle_query(self, text: str) -> None:
         try:
+            prefix = self.memory.build_context_prefix()
+            augmented = prefix + text if prefix else text
             with output.StreamingDisplay() as stream:
 
                 async def prog(p: float, tot: float | None, msg: str | None) -> None:
@@ -89,17 +93,18 @@ class REPLApp:
 
                 if self.mcp is not None:
                     result = await self.mcp.query(
-                        text,
+                        augmented,
                         progress_callback=prog,
                     )
                 else:
                     assert self.direct is not None
                     result = await asyncio.to_thread(
                         self.direct.query,
-                        text,
+                        augmented,
                         verbose_emitter=verb,
                     )
             output.render_query_result(result)
+            self.memory.add_turn(text, str(result.get("answer", "")))
             self.history.add_turn(
                 self.session_id,
                 text,

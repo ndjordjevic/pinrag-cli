@@ -211,10 +211,13 @@ class CommandDispatcher:
         if not doc_sel or not question:
             output.render_error(
                 "Usage: /ask <ref|title> -- <question> "
-                "(use -- to separate document and question; quote paths/titles as needed)"
+                "(use -- to separate document and question; "
+                "quote paths/titles as needed)"
             )
             return
         hist_line = f"/ask {doc_sel} -- {question}"
+        prefix = self.repl.memory.build_context_prefix()
+        augmented = prefix + question if prefix else question
         try:
             with output.StreamingDisplay() as stream:
 
@@ -226,7 +229,7 @@ class CommandDispatcher:
 
                 if self.repl.mcp is not None:
                     result = await self.repl.mcp.query(
-                        question,
+                        augmented,
                         document_id=doc_sel,
                         progress_callback=prog,
                     )
@@ -234,11 +237,13 @@ class CommandDispatcher:
                     assert self.repl.direct is not None
                     result = await asyncio.to_thread(
                         self.repl.direct.query,
-                        question,
+                        augmented,
                         document_id=doc_sel,
                         verbose_emitter=verb,
                     )
             output.render_query_result(result)
+            # Memory is natural-language only (matches plain REPL queries); JSON history keeps full /ask line.
+            self.repl.memory.add_turn(question, str(result.get("answer", "")))
             self.repl.history.add_turn(
                 self.repl.session_id,
                 hist_line,
@@ -296,3 +301,8 @@ class CommandDispatcher:
         _ = args_str
         turns = self.repl.history.get_session(self.repl.session_id)
         output.render_history_turns(turns)
+
+    async def cmd_clear(self, args_str: str) -> None:
+        _ = args_str
+        self.repl.memory.clear()
+        output.console.print("[green]Conversation memory cleared.[/]")

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pinrag_cli.commands import CommandDispatcher, _split_ask_args, _split_tag_args
+from pinrag_cli.memory import ConversationMemory
 
 
 @pytest.mark.parametrize(
@@ -48,6 +49,7 @@ def _mock_repl() -> MagicMock:
     repl.mcp = None
     repl.history = MagicMock()
     repl.history.get_session.return_value = []
+    repl.memory = ConversationMemory()
     repl.session_id = "s1"
     repl._collection_for_history = MagicMock(return_value="pinrag")
     return repl
@@ -167,6 +169,15 @@ def test_cmd_exit_sets_flag() -> None:
     assert d.should_exit
 
 
+def test_cmd_clear_clears_memory() -> None:
+    repl = _mock_repl()
+    repl.memory.add_turn("first", "answer one")
+    assert repl.memory.build_context_prefix()
+    d = CommandDispatcher(repl)
+    asyncio.run(d.cmd_clear(""))
+    assert not repl.memory.build_context_prefix()
+
+
 @patch("pinrag_cli.commands.output.render_error")
 def test_cmd_ask_shows_usage_when_no_separator(mock_err: MagicMock) -> None:
     repl = _mock_repl()
@@ -189,3 +200,30 @@ def test_cmd_ask_calls_direct_query_with_document_id() -> None:
     assert repl.direct.query.call_args[1]["document_id"] == "book.pdf"
     repl.history.add_turn.assert_called_once()
     assert repl.history.add_turn.call_args[0][1] == "/ask book.pdf -- What is up?"
+
+
+def test_cmd_ask_folds_memory_into_question() -> None:
+    repl = _mock_repl()
+    repl.memory.add_turn("earlier", "short reply")
+    repl.direct.query.return_value = {"answer": "ok", "sources": []}
+    d = CommandDispatcher(repl)
+    asyncio.run(d.cmd_ask("book.pdf -- Follow up?"))
+    repl.direct.query.assert_called_once()
+    sent = repl.direct.query.call_args[0][0]
+    assert "Follow up?" in sent
+    assert "earlier" in sent
+    assert "short reply" in sent
+
+
+def test_cmd_ask_memory_stores_question_not_slash_command() -> None:
+    """Follow-up /ask must not put '/ask doc -- ...' into the rolling memory prefix."""
+    repl = _mock_repl()
+    repl.direct.query.return_value = {"answer": "first answer", "sources": []}
+    d = CommandDispatcher(repl)
+    asyncio.run(d.cmd_ask("book.pdf -- What is up?"))
+    repl.direct.query.reset_mock()
+    repl.direct.query.return_value = {"answer": "second", "sources": []}
+    asyncio.run(d.cmd_ask("book.pdf -- Second?"))
+    sent = repl.direct.query.call_args[0][0]
+    assert "/ask" not in sent
+    assert "Q: What is up?" in sent
