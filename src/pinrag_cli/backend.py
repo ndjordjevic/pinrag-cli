@@ -13,15 +13,11 @@ from pinrag.config import (
 )
 from pinrag.core import (
     add_files as core_add_files,
-)
-from pinrag.core import (
+    list_collections as core_list_collections,
     list_documents as core_list_documents,
-)
-from pinrag.core import (
     query as core_query,
-)
-from pinrag.core import (
     remove_document as core_remove_document,
+    set_document_tag as core_set_document_tag,
 )
 
 
@@ -102,6 +98,20 @@ class BackendClient:
             verbose_emitter=verbose_emitter,
         )
 
+    def set_document_tag(
+        self,
+        document_id: str,
+        tag: str,
+        verbose_emitter: Any = None,
+    ) -> dict[str, Any]:
+        return core_set_document_tag(
+            document_id,
+            tag,
+            persist_dir=self.persist_dir,
+            collection=self.collection,
+            verbose_emitter=verbose_emitter,
+        )
+
     def status(self) -> dict[str, Any]:
         return {
             "pinrag_version": pinrag_version,
@@ -110,3 +120,8 @@ class BackendClient:
             "llm_provider": get_llm_provider(),
             "llm_model": get_llm_model(),
         }
+
+    def list_collections(self) -> list[str]:
+        """Chroma collection names in this persist directory."""
+        data = core_list_collections(persist_dir=self.persist_dir)
+        return list(data.get("collections") or [])

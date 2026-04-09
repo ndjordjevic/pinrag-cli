@@ -8,6 +8,8 @@ dependencies = [
     "pinrag>=0.9.27",
     "prompt-toolkit>=3.0",
     "rich>=13.0",
+    "mcp>=1.27.0",
+    "httpx>=0.28.0",
 ]
 
 [project.scripts]
