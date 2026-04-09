@@ -48,6 +48,17 @@ def _format_source_locations(sources: list[dict[str, Any]]) -> str:
     return ", ".join(parts)
 
 
+def _source_table_label(sources_for_doc: list[dict[str, Any]]) -> str:
+    """First column for Sources table: YouTube title + id when title is present."""
+    if not sources_for_doc:
+        return ""
+    doc_id = str(sources_for_doc[0].get("document_id", ""))
+    title = sources_for_doc[0].get("title")
+    if title:
+        return f"{title} ({doc_id})"
+    return doc_id
+
+
 def render_query_result(result: dict[str, Any]) -> None:
     """Render RAG answer and source table."""
     answer = result.get("answer", "")
@@ -62,12 +73,12 @@ def render_query_result(result: dict[str, Any]) -> None:
         by_doc[doc_id].append(s)
 
     table = Table(title="Sources", show_header=True)
-    table.add_column("document_id", overflow="fold")
+    table.add_column("source", overflow="fold")
     table.add_column("pages")
     for doc_id in sorted(by_doc.keys()):
         chunk_list = by_doc[doc_id]
         pages_cell = _format_source_locations(chunk_list)
-        table.add_row(doc_id, pages_cell)
+        table.add_row(_source_table_label(chunk_list), pages_cell)
     console.print(table)
 
 
