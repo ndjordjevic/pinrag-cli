@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pinrag_cli.commands import CommandDispatcher, _split_ask_args, _split_tag_args
+from pinrag_cli.config import CLIConfig, initial_sources
 from pinrag_cli.memory import ConversationMemory
 
 
@@ -52,6 +53,10 @@ def _mock_repl() -> MagicMock:
     repl.memory = ConversationMemory()
     repl.session_id = "s1"
     repl._collection_for_history = MagicMock(return_value="pinrag")
+    repl.cli_config = CLIConfig()
+    repl.config_sources = initial_sources()
+    repl.reload_config_merged = MagicMock()
+    repl._response_style_literal = MagicMock(return_value="thorough")
     return repl
 
 
@@ -198,6 +203,7 @@ def test_cmd_ask_calls_direct_query_with_document_id() -> None:
     repl.direct.query.assert_called_once()
     assert repl.direct.query.call_args[0][0] == "What is up?"
     assert repl.direct.query.call_args[1]["document_id"] == "book.pdf"
+    assert repl.direct.query.call_args[1]["response_style"] == "thorough"
     repl.history.add_turn.assert_called_once()
     assert repl.history.add_turn.call_args[0][1] == "/ask book.pdf -- What is up?"
 

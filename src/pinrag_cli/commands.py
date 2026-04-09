@@ -7,6 +7,12 @@ import shlex
 from typing import TYPE_CHECKING
 
 from pinrag_cli import output
+from pinrag_cli.config import (
+    USER_CONFIG_PATH,
+    effective_config_rows,
+    parse_set_args,
+    set_user_config_key,
+)
 
 if TYPE_CHECKING:
     from pinrag_cli.repl import REPLApp
@@ -227,11 +233,13 @@ class CommandDispatcher:
                 def verb(message: str, _level: str) -> None:
                     stream.update(message)
 
+                rs = self.repl._response_style_literal()
                 if self.repl.mcp is not None:
                     result = await self.repl.mcp.query(
                         augmented,
                         document_id=doc_sel,
                         progress_callback=prog,
+                        response_style=rs,
                     )
                 else:
                     assert self.repl.direct is not None
@@ -240,9 +248,10 @@ class CommandDispatcher:
                         augmented,
                         document_id=doc_sel,
                         verbose_emitter=verb,
+                        response_style=rs,
                     )
             output.render_query_result(result)
-            # Memory is natural-language only (matches plain REPL queries); JSON history keeps full /ask line.
+            # Memory: natural-language only; JSON history keeps full /ask line.
             self.repl.memory.add_turn(question, str(result.get("answer", "")))
             self.repl.history.add_turn(
                 self.repl.session_id,
@@ -295,6 +304,8 @@ class CommandDispatcher:
         else:
             assert self.repl.direct is not None
             self.repl.direct.collection = name
+        self.repl.cli_config.collection = name
+        self.repl.config_sources["collection"] = "repl"
         output.console.print(f"[green]Active collection:[/] [bold]{name}[/]")
 
     async def cmd_history(self, args_str: str) -> None:
@@ -306,3 +317,38 @@ class CommandDispatcher:
         _ = args_str
         self.repl.memory.clear()
         output.console.print("[green]Conversation memory cleared.[/]")
+
+    async def cmd_config(self, args_str: str) -> None:
+        s = args_str.strip()
+        if not s:
+            st = await self.repl._status()
+            rc = st.get("collection") if isinstance(st.get("collection"), str) else None
+            output.render_config_table(
+                effective_config_rows(
+                    self.repl.cli_config,
+                    self.repl.config_sources,
+                    runtime_collection=rc,
+                )
+            )
+            return
+        if not s.lower().startswith("set "):
+            output.render_error("Usage: /config | /config set <key> <value>")
+            return
+        try:
+            key, value = parse_set_args(s)
+        except ValueError as e:
+            output.render_error(str(e))
+            return
+        try:
+            set_user_config_key(key, value)
+        except ValueError as e:
+            output.render_error(str(e))
+            return
+        self.repl.reload_config_merged()
+        output.console.print(
+            f"[green]Updated[/] [bold]{USER_CONFIG_PATH}[/]. Settings reloaded."
+        )
+        if key in ("server_url",):
+            output.console.print(
+                "[yellow]Reconnect:[/] exit and restart pinrag-cli for MCP URL changes."
+            )

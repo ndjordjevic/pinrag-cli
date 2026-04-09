@@ -1,0 +1,27 @@
+# Sample PinRAG CLI config — copy to one of:
+#
+#   ~/.config/pinrag-cli/config.toml          (applies everywhere)
+#   <project>/.pinrag-cli.toml               (per-project; overrides user file for same keys)
+#
+# Then run the CLI as usual (no extra flag):
+#
+#   pinrag-cli
+#   pinrag-cli --server http://127.0.0.1:8765/mcp   # CLI flags beat the file
+#
+# Precedence: CLI flags > env vars > .pinrag-cli.toml (CWD) > this user file > built-ins.
+# Env still wins over files for: PINRAG_COLLECTION_NAME, PINRAG_RESPONSE_STYLE,
+# PINRAG_CLI_MEMORY, PINRAG_CLI_MEMORY_TURNS
+#
+# Server-only settings (LLM, persist dir, embeddings) stay on the pinrag process env —
+# not in this file.
+
+[defaults]
+collection = "pinrag"
+# MCP mode: set the streamable-http URL (empty or omit = direct / local pinrag in same env)
+# server_url = "http://127.0.0.1:8765/mcp"
+server_url = ""
+response_style = "thorough"
+
+[memory]
+enabled = true
+turns = 5

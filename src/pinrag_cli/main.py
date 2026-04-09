@@ -9,29 +9,50 @@ import sys
 from pinrag.env_validation import require_llm_api_key
 
 from pinrag_cli.backend import BackendClient
+from pinrag_cli.config import CLIConfig, load_config
 from pinrag_cli.mcp_backend import MCPBackendClient
 from pinrag_cli.repl import REPLApp
 
 
 async def _async_main(
     *,
-    server_url: str | None,
+    cli_config: CLIConfig,
+    config_sources: dict[str, str],
     persist_dir: str | None,
-    collection: str | None,
+    launch_cli_collection: str | None,
+    launch_cli_server: str | None,
+    launch_cli_response_style: str | None,
 ) -> None:
     mcp_client: MCPBackendClient | None = None
     try:
-        if server_url:
-            mcp_client = MCPBackendClient(server_url)
+        if cli_config.server_url:
+            mcp_client = MCPBackendClient(cli_config.server_url)
             await mcp_client.connect()
-            if collection:
-                mcp_client.collection = collection
-            app = REPLApp(mcp=mcp_client)
+            if cli_config.collection:
+                mcp_client.collection = cli_config.collection
+            app = REPLApp(
+                mcp=mcp_client,
+                cli_config=cli_config,
+                config_sources=config_sources,
+                launch_cli_collection=launch_cli_collection,
+                launch_cli_server=launch_cli_server,
+                launch_cli_response_style=launch_cli_response_style,
+            )
             await app.run()
         else:
             require_llm_api_key()
-            client = BackendClient(persist_dir=persist_dir, collection=collection)
-            app = REPLApp(direct=client)
+            client = BackendClient(
+                persist_dir=persist_dir,
+                collection=cli_config.collection,
+            )
+            app = REPLApp(
+                direct=client,
+                cli_config=cli_config,
+                config_sources=config_sources,
+                launch_cli_collection=launch_cli_collection,
+                launch_cli_server=launch_cli_server,
+                launch_cli_response_style=launch_cli_response_style,
+            )
             await app.run()
     finally:
         if mcp_client is not None:
@@ -61,14 +82,29 @@ def main() -> None:
             "Use with `pinrag server`; skips local LLM key check."
         ),
     )
+    parser.add_argument(
+        "--response-style",
+        default=None,
+        choices=("thorough", "concise"),
+        help="RAG answer style (default: config / PINRAG_RESPONSE_STYLE / thorough).",
+    )
     args = parser.parse_args()
+
+    cfg, src = load_config(
+        cli_collection=args.collection,
+        cli_server=args.server,
+        cli_response_style=args.response_style,
+    )
 
     try:
         asyncio.run(
             _async_main(
-                server_url=args.server,
+                cli_config=cfg,
+                config_sources=src,
                 persist_dir=args.persist_dir,
-                collection=args.collection,
+                launch_cli_collection=args.collection,
+                launch_cli_server=args.server,
+                launch_cli_response_style=args.response_style,
             )
         )
     except BrokenPipeError:

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any
-
 import threading
 import time
+from collections import defaultdict
+from datetime import UTC, datetime
+from typing import Any
 
 from rich.console import Console
 from rich.live import Live
@@ -203,7 +202,7 @@ def _format_uploaded_cell(raw: Any) -> str:
     except ValueError:
         return s[:19] + ("…" if len(s) > 19 else "")
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
@@ -402,6 +401,17 @@ def render_status(status: dict[str, Any]) -> None:
     console.print(Panel("\n".join(lines), title="Status", border_style="blue"))
 
 
+def render_config_table(rows: list[tuple[str, str, str]]) -> None:
+    """Show effective CLI config: (key, value, source)."""
+    table = Table(title="PinRAG CLI config", show_header=True)
+    table.add_column("key", overflow="fold")
+    table.add_column("value", overflow="fold")
+    table.add_column("source", overflow="fold")
+    for key, value, source in rows:
+        table.add_row(key, value, source)
+    console.print(table)
+
+
 def render_help() -> None:
     """Print slash command reference."""
     text = """
@@ -415,6 +425,7 @@ def render_help() -> None:
 - `/switch` — list Chroma collections; `/switch NAME` — use that collection
 - `/history` — show conversation turns for this session (JSON-backed)
 - `/clear` — clear in-session conversational memory (rolling Q/A used for follow-ups)
+- `/config` — show effective CLI config; `/config set KEY VALUE` writes user TOML
 - `/status` — show version, persist dir, collection, LLM
 - `/help` — this help
 - `/exit` — quit (same as Ctrl+D)
@@ -422,7 +433,8 @@ def render_help() -> None:
 **Else:** plain text line = RAG query over the index.
 
 **Session memory:** follow-up questions reuse a short rolling Q/A window. Set
-``PINRAG_CLI_MEMORY=0`` to disable. ``PINRAG_CLI_MEMORY_TURNS`` caps prior turns (default 5).
+``PINRAG_CLI_MEMORY=0`` to disable, or ``[memory]`` in ``~/.config/pinrag-cli/config``.
+``PINRAG_CLI_MEMORY_TURNS`` caps prior turns (default 5).
 """
     console.print(Markdown(text.strip()))
 

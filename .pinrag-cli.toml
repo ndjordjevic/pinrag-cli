@@ -1,0 +1,10 @@
+# Per-project pinrag-cli overrides (only used when cwd is this directory).
+# Fill in values; omit a key to keep using your user config or defaults.
+
+[defaults]
+# collection = "pinrag"
+# server_url = "http://127.0.0.1:8765/mcp"
+# response_style = "thorough"
+
+[memory]
+turns = 10
