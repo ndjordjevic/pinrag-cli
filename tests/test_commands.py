@@ -47,7 +47,7 @@ def test_cmd_add_passes_tag() -> None:
         "collection_name": "y",
     }
     d = CommandDispatcher(client)
-    d.cmd_add('/tmp/book.pdf --tag mine')
+    d.cmd_add("/tmp/book.pdf --tag mine")
     client.add.assert_called_once_with(["/tmp/book.pdf"], tags=["mine"])
 
 

@@ -15,9 +15,11 @@ console = Console(stderr=True)
 
 def render_banner(status: dict[str, Any]) -> None:
     """Print startup banner with PinRAG version and store info."""
+    persist = status.get("persist_dir", "?")
+    coll = status.get("collection", "?")
     lines = [
         f"PinRAG CLI — library {status.get('pinrag_version', '?')}",
-        f"Store: {status.get('persist_dir', '?')}  collection: {status.get('collection', '?')}",
+        f"Store: {persist}  collection: {coll}",
         "Type a question to query, or /help for commands. Ctrl+D or /exit to quit.",
     ]
     console.print(Panel("\n".join(lines), title="pinrag-cli", border_style="cyan"))
@@ -88,7 +90,7 @@ def render_documents_table(result: dict[str, Any]) -> None:
     details = result.get("document_details") or {}
     total_chunks = result.get("total_chunks", 0)
     if not docs:
-        console.print(f"No documents (0 chunks in view).")
+        console.print("No documents (0 chunks in view).")
         return
     table = Table(title=f"Documents ({total_chunks} chunks)", show_header=True)
     table.add_column("document_id", overflow="fold")

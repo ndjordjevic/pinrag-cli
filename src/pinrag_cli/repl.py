@@ -7,9 +7,9 @@ from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 
+from pinrag_cli import output
 from pinrag_cli.backend import BackendClient
 from pinrag_cli.commands import CommandDispatcher
-from pinrag_cli import output
 
 
 class REPLApp:

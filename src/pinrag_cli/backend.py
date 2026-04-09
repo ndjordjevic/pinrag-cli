@@ -13,8 +13,14 @@ from pinrag.config import (
 )
 from pinrag.core import (
     add_files as core_add_files,
+)
+from pinrag.core import (
     list_documents as core_list_documents,
+)
+from pinrag.core import (
     query as core_query,
+)
+from pinrag.core import (
     remove_document as core_remove_document,
 )
 
@@ -22,7 +28,12 @@ from pinrag.core import (
 class BackendClient:
     """Thin wrapper around pinrag.core operations with fixed store location."""
 
-    def __init__(self, *, persist_dir: str | None = None, collection: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        persist_dir: str | None = None,
+        collection: str | None = None,
+    ) -> None:
         self.persist_dir = get_persist_dir() if persist_dir is None else persist_dir
         self.collection = get_collection_name() if collection is None else collection
 

@@ -24,10 +24,19 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [dependency-groups]
-dev = ["pytest>=9.0.3"]
+dev = ["pytest>=9.0.3", "ruff>=0.9.0"]
+
+[tool.pyright]
+# Use the uv-managed venv so imports resolve (pinrag editable, prompt-toolkit, etc.).
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
 
 [tool.uv.sources]
 pinrag = { path = "../pinrag", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

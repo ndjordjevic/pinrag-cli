@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pinrag_cli.backend import BackendClient
 from pinrag_cli import output
+from pinrag_cli.backend import BackendClient
 
 
 def _split_tag_args(args_str: str) -> tuple[str | None, str]:
