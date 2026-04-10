@@ -21,7 +21,7 @@ uv run pinrag-cli
 ## Usage
 
 - Plain text at the prompt runs a RAG **query** (with a short **Rich Live** progress panel).
-- **Slash commands:** `/add`, `/list`, `/remove`, `/tag`, `/ask`, `/focus`, `/switch`, `/history`, `/clear`, `/status`, `/help`, `/exit`
+- **Slash commands:** `/add`, `/list`, `/remove`, `/tag`, `/ask`, `/focus`, `/sessions`, `/resume`, `/name`, `/drop`, `/switch`, `/history`, `/clear`, `/status`, `/help`, `/exit`
 - Input line history: `~/.pinrag_cli_history`
 - Conversation turns (query + answer + sources): `~/.pinrag-cli/history/<session-id>.json`
 - **Short session memory:** a bounded rolling Q/A window is folded into the next query so follow-ups (e.g. “elaborate”, “what about page 5?”) keep context without restating it. Disable with `PINRAG_CLI_MEMORY=0`; cap prior turns with `PINRAG_CLI_MEMORY_TURNS` (default 5). `/clear` drops that in-memory window only; `/history` JSON log is unchanged.
@@ -49,6 +49,8 @@ pinrag-cli --server http://127.0.0.1:8765/mcp [--collection NAME]
 Use `/switch` to list Chroma collections or `/switch <name>` to target a collection (passed through to MCP tools).
 
 Use `/focus <ref|title>` to pin all subsequent queries to a single document — the prompt changes to `pinrag[doc]>` as a reminder. Run `/focus` with no argument to clear the pin.
+
+Use `/sessions` to list previous sessions (newest first, with index, name, date, collection, turn count, and last query). Use `/resume <id|#|name>` to reload a prior session's last N turns into the memory window so follow-up queries have context. Use `/name <label>` to give the current session a human-readable name visible in `/sessions`. The `--resume SESSION_ID` CLI flag applies the same priming before the banner appears.
 
 ### Live HTTP test (optional)
 

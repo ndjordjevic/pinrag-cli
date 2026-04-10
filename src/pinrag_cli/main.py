@@ -22,6 +22,7 @@ async def _async_main(
     launch_cli_collection: str | None,
     launch_cli_server: str | None,
     launch_cli_response_style: str | None,
+    resume_session_id: str | None,
 ) -> None:
     mcp_client: MCPBackendClient | None = None
     try:
@@ -37,6 +38,7 @@ async def _async_main(
                 launch_cli_collection=launch_cli_collection,
                 launch_cli_server=launch_cli_server,
                 launch_cli_response_style=launch_cli_response_style,
+                resume_session_id=resume_session_id,
             )
             await app.run()
         else:
@@ -52,6 +54,7 @@ async def _async_main(
                 launch_cli_collection=launch_cli_collection,
                 launch_cli_server=launch_cli_server,
                 launch_cli_response_style=launch_cli_response_style,
+                resume_session_id=resume_session_id,
             )
             await app.run()
     finally:
@@ -88,6 +91,12 @@ def main() -> None:
         choices=("thorough", "concise"),
         help="RAG answer style (default: config / PINRAG_RESPONSE_STYLE / thorough).",
     )
+    parser.add_argument(
+        "--resume",
+        default=None,
+        metavar="SESSION_ID",
+        help="Resume a previous session (primes memory context; run /sessions to list IDs).",
+    )
     args = parser.parse_args()
 
     cfg, src = load_config(
@@ -105,6 +114,7 @@ def main() -> None:
                 launch_cli_collection=args.collection,
                 launch_cli_server=args.server,
                 launch_cli_response_style=args.response_style,
+                resume_session_id=args.resume,
             )
         )
     except BrokenPipeError:

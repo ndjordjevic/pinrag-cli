@@ -423,6 +423,10 @@ def render_help() -> None:
 - `/tag <ref|title> --tag TAG` — set or replace tag on all chunks for one document
 - `/ask <ref|title> -- <question>` — RAG query scoped to one document (same ref/title/stem rules as `/remove`)
 - `/focus <ref|title>` — pin all subsequent queries to one document; `/focus` (no arg) clears the pin
+- `/sessions` — list all previous sessions (newest first) with index, name, date, collection, turns, last query
+- `/resume <id|#|name>` — reload a prior session's last N turns into memory (primes follow-up context)
+- `/name <label>` — give the current session a human-readable name (shown in `/sessions`)
+- `/drop <id|#|name>` — delete a session; `/drop --all` deletes all except the current one
 - `/switch` — list Chroma collections; `/switch NAME` — use that collection
 - `/history` — show conversation turns for this session (JSON-backed)
 - `/clear` — clear in-session conversational memory (rolling Q/A used for follow-ups)
@@ -460,6 +464,33 @@ def render_collection_names(
     table.add_column("name", overflow="fold")
     for n in names:
         table.add_row(n)
+    console.print(table)
+
+
+def render_sessions_table(sessions: list[dict[str, Any]]) -> None:
+    """Print previous sessions as a numbered table (newest first)."""
+    if not sessions:
+        console.print("No previous sessions found.")
+        return
+    table = Table(title="Sessions", show_header=True)
+    table.add_column("#", justify="right", max_width=4)
+    table.add_column("name / id", overflow="fold", max_width=28)
+    table.add_column("date", overflow="fold", max_width=12)
+    table.add_column("collection", overflow="fold", max_width=18)
+    table.add_column("turns", justify="right", max_width=6)
+    table.add_column("last query", overflow="fold", max_width=40)
+    for i, s in enumerate(sessions, start=1):
+        name = s.get("name")
+        sid = str(s.get("id", ""))
+        label = f"[bold]{name}[/]" if name else f"[dim]{sid[:8]}…[/]"
+        ts = str(s.get("last_ts") or "")
+        date = ts[:10] if ts else ""
+        coll = str(s.get("collection") or "")
+        turns = str(s.get("turns", 0))
+        lq = str(s.get("last_query", ""))
+        if len(lq) > 50:
+            lq = lq[:49] + "…"
+        table.add_row(str(i), label, date, coll, turns, lq)
     console.print(table)
 
 

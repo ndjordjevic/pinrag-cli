@@ -36,6 +36,7 @@ class REPLApp:
         launch_cli_collection: str | None,
         launch_cli_server: str | None,
         launch_cli_response_style: str | None,
+        resume_session_id: str | None = None,
     ) -> None:
         if (direct is None) == (mcp is None):
             raise ValueError("Provide exactly one of direct= or mcp=")
@@ -54,6 +55,8 @@ class REPLApp:
         )
         self.session_id = self.history.new_session()
         self.focused_doc: str | None = None
+        if resume_session_id:
+            self._resume_session(resume_session_id)
         history_path = Path.home() / ".pinrag_cli_history"
         self.session = PromptSession(history=FileHistory(str(history_path)))
         self._prompt_style = Style.from_dict(
@@ -67,6 +70,18 @@ class REPLApp:
         else:
             label = "pinrag> "
         return FormattedText([("class:pinrag-prompt", label)])
+
+    def _resume_session(self, session_id: str) -> int:
+        """Prime memory from a prior session's last N turns. Returns turn count loaded."""
+        turns = self.history.get_session(session_id)
+        if not turns:
+            return 0
+        self.memory.clear()
+        cap = self.memory._window.maxlen or len(turns)
+        to_load = turns[-cap:]
+        for t in to_load:
+            self.memory.add_turn(t.get("query", ""), t.get("answer", ""))
+        return len(to_load)
 
     def _response_style_literal(self) -> Literal["thorough", "concise"]:
         return cast(

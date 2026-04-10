@@ -75,6 +75,34 @@ def _split_ask_args(args_str: str) -> tuple[str | None, str | None]:
     return " ".join(sel_tokens).strip(), " ".join(q_tokens).strip()
 
 
+def _resolve_session(arg: str, sessions: list[dict]) -> str | None:
+    """Resolve a session arg (1-based index, UUID/prefix, or name) to a session ID.
+
+    Returns the session ID string or ``None`` if no unambiguous match is found.
+    Sessions list is assumed newest-first (as returned by ``list_sessions()``).
+    """
+    # 1-based numeric index
+    if arg.isdigit():
+        idx = int(arg) - 1
+        if 0 <= idx < len(sessions):
+            return sessions[idx]["id"]
+        return None
+    # Exact ID match
+    for s in sessions:
+        if s["id"] == arg:
+            return s["id"]
+    # Case-insensitive name match
+    lower = arg.lower()
+    name_matches = [s for s in sessions if (s.get("name") or "").lower() == lower]
+    if len(name_matches) == 1:
+        return name_matches[0]["id"]
+    # UUID prefix match (unambiguous)
+    prefix_matches = [s for s in sessions if s["id"].startswith(arg)]
+    if len(prefix_matches) == 1:
+        return prefix_matches[0]["id"]
+    return None
+
+
 class CommandDispatcher:
     """Maps ``/name`` to handler methods."""
 
@@ -273,6 +301,59 @@ class CommandDispatcher:
             f"[green]Focused on:[/] [bold]{doc_sel}[/]\n"
             "[dim]All queries will be scoped to this document. Run /focus to clear.[/]"
         )
+
+    async def cmd_sessions(self, args_str: str) -> None:
+        _ = args_str
+        sessions = self.repl.history.list_sessions()
+        output.render_sessions_table(sessions)
+
+    async def cmd_resume(self, args_str: str) -> None:
+        arg = args_str.strip()
+        if not arg:
+            output.render_error("Usage: /resume <session-id | # | name>")
+            return
+        sessions = self.repl.history.list_sessions()
+        session_id = _resolve_session(arg, sessions)
+        if session_id is None:
+            output.render_error(f"Session not found: {arg!r}")
+            return
+        n = self.repl._resume_session(session_id)
+        output.console.print(
+            f"[green]Resumed:[/] loaded {n} turn(s) into memory "
+            f"from session [dim]{session_id}[/]"
+        )
+
+    async def cmd_name(self, args_str: str) -> None:
+        label = args_str.strip()
+        if not label:
+            output.render_error("Usage: /name <label>")
+            return
+        self.repl.history.set_session_name(self.repl.session_id, label)
+        output.console.print(f"[green]Session named:[/] [bold]{label}[/]")
+
+    async def cmd_drop(self, args_str: str) -> None:
+        arg = args_str.strip()
+        if not arg:
+            output.render_error("Usage: /drop <id|#|name>  or  /drop --all")
+            return
+        current = self.repl.session_id
+        if arg == "--all":
+            n = self.repl.history.delete_all_sessions(keep_id=current)
+            output.console.print(
+                f"[green]Dropped {n} session(s).[/] "
+                "[dim](current session kept)[/]"
+            )
+            return
+        sessions = self.repl.history.list_sessions()
+        session_id = _resolve_session(arg, sessions)
+        if session_id is None:
+            output.render_error(f"Session not found: {arg!r}")
+            return
+        if session_id == current:
+            output.render_error("Cannot drop the current session.")
+            return
+        self.repl.history.delete_session(session_id)
+        output.console.print(f"[green]Dropped session[/] [dim]{session_id}[/]")
 
     async def cmd_status(self, args_str: str) -> None:
         _ = args_str
