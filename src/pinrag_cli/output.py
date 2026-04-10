@@ -422,6 +422,7 @@ def render_help() -> None:
 - `/remove <ref|title>` — remove by **ref**, exact list **title**, or PDF stem (must match one doc)
 - `/tag <ref|title> --tag TAG` — set or replace tag on all chunks for one document
 - `/ask <ref|title> -- <question>` — RAG query scoped to one document (same ref/title/stem rules as `/remove`)
+- `/focus <ref|title>` — pin all subsequent queries to one document; `/focus` (no arg) clears the pin
 - `/switch` — list Chroma collections; `/switch NAME` — use that collection
 - `/history` — show conversation turns for this session (JSON-backed)
 - `/clear` — clear in-session conversational memory (rolling Q/A used for follow-ups)

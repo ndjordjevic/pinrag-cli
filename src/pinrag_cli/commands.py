@@ -262,6 +262,18 @@ class CommandDispatcher:
         except Exception as e:
             output.render_error(str(e))
 
+    async def cmd_focus(self, args_str: str) -> None:
+        doc_sel = args_str.strip()
+        if not doc_sel:
+            self.repl.focused_doc = None
+            output.console.print("[green]Focus cleared.[/] Queries run across all documents.")
+            return
+        self.repl.focused_doc = doc_sel
+        output.console.print(
+            f"[green]Focused on:[/] [bold]{doc_sel}[/]\n"
+            "[dim]All queries will be scoped to this document. Run /focus to clear.[/]"
+        )
+
     async def cmd_status(self, args_str: str) -> None:
         _ = args_str
         if self.repl.mcp is not None:

@@ -53,12 +53,20 @@ class REPLApp:
             enabled=cli_config.memory_enabled,
         )
         self.session_id = self.history.new_session()
+        self.focused_doc: str | None = None
         history_path = Path.home() / ".pinrag_cli_history"
         self.session = PromptSession(history=FileHistory(str(history_path)))
-        self._prompt_message = FormattedText([("class:pinrag-prompt", "pinrag> ")])
         self._prompt_style = Style.from_dict(
             {"pinrag-prompt": "bold ansibrightcyan"}
         )
+
+    @property
+    def _prompt_message(self) -> FormattedText:
+        if self.focused_doc:
+            label = f"pinrag[{self.focused_doc}]> "
+        else:
+            label = "pinrag> "
+        return FormattedText([("class:pinrag-prompt", label)])
 
     def _response_style_literal(self) -> Literal["thorough", "concise"]:
         return cast(
@@ -155,6 +163,7 @@ class REPLApp:
                 if self.mcp is not None:
                     result = await self.mcp.query(
                         augmented,
+                        document_id=self.focused_doc,
                         progress_callback=prog,
                         response_style=rs,
                     )
@@ -163,6 +172,7 @@ class REPLApp:
                     result = await asyncio.to_thread(
                         self.direct.query,
                         augmented,
+                        document_id=self.focused_doc,
                         verbose_emitter=verb,
                         response_style=rs,
                     )
