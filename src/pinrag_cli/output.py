@@ -94,8 +94,35 @@ def render_banner(status: dict[str, Any]) -> None:
     console.print(Panel("\n".join(lines), title="pinrag-cli", border_style="cyan"))
 
 
-def _format_source_locations(sources: list[dict[str, Any]]) -> str:
-    """Comma-separated page (or page:start) tokens, deduped and sorted."""
+def _format_timestamp_seconds(seconds: int) -> str:
+    """Format seconds as M:SS (e.g. 83 -> '1:23')."""
+    total_secs = int(round(float(seconds)))
+    m, s = divmod(total_secs, 60)
+    if m > 0:
+        return f"{m}:{s:02d}"
+    return f"0:{s:02d}"
+
+
+def _infer_source_document_type(sources: list[dict[str, Any]]) -> str | None:
+    """Best-effort type when older PinRAG builds omit document_type on sources."""
+    for s in sources:
+        raw = s.get("document_type")
+        if raw is None:
+            continue
+        t = str(raw).strip().lower()
+        if t:
+            return t
+    if any("start" in s for s in sources):
+        return "youtube"
+    if any(str(s.get("source") or "").strip().startswith("http") for s in sources):
+        return "web"
+    if any(int(s.get("page", 0) or 0) > 0 for s in sources):
+        return "pdf"
+    return None
+
+
+def _format_pdf_page_tokens(sources: list[dict[str, Any]]) -> str:
+    """Comma-separated page (or page:start) tokens for PDFs; skips meaningless 0."""
     locs: set[tuple[int, int | None]] = set()
     for s in sources:
         page = int(s.get("page", 0))
@@ -112,11 +139,95 @@ def _format_source_locations(sources: list[dict[str, Any]]) -> str:
 
     parts: list[str] = []
     for page, start in sorted(locs, key=sort_key):
+        if page <= 0 and start is None:
+            continue
         if start is None:
             parts.append(str(page))
         else:
             parts.append(f"{page}:{start}")
-    return ", ".join(parts)
+    return ", ".join(parts) if parts else "—"
+
+
+def _format_source_location_cell(sources: list[dict[str, Any]]) -> str:
+    """Human-readable citation column: pages for PDFs, URLs for web, times for YouTube, etc."""
+    if not sources:
+        return ""
+    dtype = _infer_source_document_type(sources)
+
+    if dtype == "youtube":
+        times: set[int] = set()
+        for s in sources:
+            if "start" not in s:
+                continue
+            try:
+                times.add(int(s["start"]))
+            except (TypeError, ValueError):
+                pass
+        if not times:
+            return "—"
+        return ", ".join(_format_timestamp_seconds(t) for t in sorted(times))
+
+    if dtype == "web":
+        urls: list[str] = []
+        seen_u: set[str] = set()
+        for s in sources:
+            u = str(s.get("source") or "").strip()
+            if u and u not in seen_u:
+                seen_u.add(u)
+                urls.append(u)
+        return ", ".join(urls) if urls else "—"
+
+    if dtype == "github":
+        paths: list[str] = []
+        seen_p: set[str] = set()
+        for s in sources:
+            p = str(s.get("source") or "").strip()
+            if p and p not in seen_p:
+                seen_p.add(p)
+                paths.append(p)
+        return ", ".join(paths) if paths else "—"
+
+    if dtype == "discord":
+        range_tuples: list[tuple[int, int]] = []
+        seen_r: set[tuple[int, int]] = set()
+        for s in sources:
+            try:
+                ms = s.get("message_start")
+                me = s.get("message_end")
+                if ms is not None and me is not None:
+                    tup = (int(ms), int(me))
+                    if tup not in seen_r:
+                        seen_r.add(tup)
+                        range_tuples.append(tup)
+            except (TypeError, ValueError):
+                pass
+        range_tuples.sort()
+        if range_tuples:
+            return ", ".join(f"msgs {a}\u2013{b}" for a, b in range_tuples)
+        ch = sources[0].get("channel")
+        return str(ch).strip() if ch else "—"
+
+    if dtype == "plaintext":
+        refs: list[str] = []
+        seen_f: set[str] = set()
+        for s in sources:
+            p = str(s.get("source") or "").strip()
+            if p and p not in seen_f:
+                seen_f.add(p)
+                refs.append(p)
+        if refs:
+            return ", ".join(refs)
+        return _format_pdf_page_tokens(sources)
+
+    if dtype == "pdf":
+        return _format_pdf_page_tokens(sources)
+
+    cell = _format_pdf_page_tokens(sources)
+    if cell != "—":
+        return cell
+    refs = [str(s.get("source") or "").strip() for s in sources]
+    refs = [r for r in refs if r]
+    return ", ".join(dict.fromkeys(refs)) if refs else "—"
 
 
 def _source_table_label(sources_for_doc: list[dict[str, Any]]) -> str:
@@ -145,11 +256,11 @@ def render_query_result(result: dict[str, Any]) -> None:
 
     table = Table(title="Sources", show_header=True)
     table.add_column("source", overflow="fold")
-    table.add_column("pages")
+    table.add_column("location")
     for doc_id in sorted(by_doc.keys()):
         chunk_list = by_doc[doc_id]
-        pages_cell = _format_source_locations(chunk_list)
-        table.add_row(_source_table_label(chunk_list), pages_cell)
+        loc_cell = _format_source_location_cell(chunk_list)
+        table.add_row(_source_table_label(chunk_list), loc_cell)
     console.print(table)
 
 

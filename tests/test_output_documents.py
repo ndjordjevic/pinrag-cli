@@ -7,6 +7,7 @@ from unittest.mock import patch
 from pinrag_cli.output import (
     _document_extent_and_extra,
     _format_bytes_cell,
+    _format_source_location_cell,
     _format_uploaded_cell,
     render_remove_result,
     render_set_tag_result,
@@ -64,6 +65,45 @@ def test_render_remove_result_warns_when_zero_chunks_deleted() -> None:
     panel = mock_print.call_args[0][0]
     text = str(panel.renderable)
     assert "No chunks matched" in text
+
+
+def test_source_location_cell_pdf_pages() -> None:
+    assert (
+        _format_source_location_cell(
+            [
+                {"document_id": "a.pdf", "page": 2, "document_type": "pdf"},
+                {"document_id": "a.pdf", "page": 1, "document_type": "pdf"},
+            ]
+        )
+        == "1, 2"
+    )
+
+
+def test_source_location_cell_web_urls_not_zero() -> None:
+    cell = _format_source_location_cell(
+        [
+            {
+                "document_id": "picocomputer.github.io/",
+                "page": 0,
+                "document_type": "web",
+                "source": "https://picocomputer.github.io/hardware.html",
+            },
+        ]
+    )
+    assert "picocomputer.github.io" in cell
+    assert cell != "0"
+
+
+def test_source_location_cell_youtube_timestamps() -> None:
+    assert (
+        _format_source_location_cell(
+            [
+                {"document_id": "v", "page": 0, "start": 83, "document_type": "youtube"},
+                {"document_id": "v", "page": 0, "start": 125, "document_type": "youtube"},
+            ]
+        )
+        == "1:23, 2:05"
+    )
 
 
 def test_extent_includes_unknown_keys() -> None:
